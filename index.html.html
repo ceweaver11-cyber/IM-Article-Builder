@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exploration & Blog — Milestone IM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0d0f12;
+            color: #f3f4f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <header class="border-b border-gray-800 bg-[#0d0f12] sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="https://milestone-im.com" class="flex items-center space-x-2 tracking-[0.2em] font-light text-xl text-white hover:opacity-80 transition">
+                <span class="font-bold">MILESTONE</span> <span class="text-gray-400 text-sm tracking-widest border-l border-gray-700 pl-3">IM</span>
+            </a>
+            
+            <div class="flex items-center space-x-8 text-xs tracking-widest uppercase font-medium text-gray-400">
+                <span class="text-white border-b border-white pb-1">Exploration & Blog</span>
+                <a href="https://milestone-im.com" class="hover:text-white transition">Notre Métier</a>
+                <a href="https://milestone-im.com" class="hover:text-white transition">Track Record</a>
+                <a href="https://milestone-im.com" class="border border-gray-700 px-4 py-2 hover:bg-white hover:text-black transition">FR / EN</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-16 w-full flex-grow">
+        <div class="mb-16 border-b border-gray-800 pb-10">
+            <p class="text-xs uppercase tracking-[0.3em] text-gray-500 font-semibold mb-3">La donnée comme matière première</p>
+            <h1 class="text-4xl md:text-5xl font-light tracking-tight text-white mb-4">
+                Sélectionner. Structurer. <span class="font-normal text-gray-400">Livrer.</span>
+            </h1>
+            <p class="text-gray-400 max-w-2xl text-sm leading-relaxed">
+                Retrouvez nos analyses macroéconomiques quotidiennes, nos analyses d'opportunités off-market et nos décryptages de rendements réels sur les corridors Suisse et France Orientale.
+            </p>
+        </div>
+
+        <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+            <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+            <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+        </div>
+    </main>
+
+    <div id="article-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[#111419] border border-gray-800 w-full max-w-3xl max-h-[85vh] overflow-y-auto p-8 relative shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 hover:text-white text-xl tracking-widest uppercase text-xs">&times; Fermer</button>
+            <div class="mb-4">
+                <span id="modal-region" class="text-xs uppercase tracking-widest text-gray-400 px-2 py-1 bg-gray-800 font-mono"></span>
+                <span id="modal-date" class="text-xs text-gray-500 ml-3"></span>
+            </div>
+            <h2 id="modal-title" class="text-2xl md:text-3xl font-light text-white mb-6 tracking-tight"></h2>
+            <div id="modal-content" class="text-gray-300 text-sm leading-relaxed space-y-4 border-b border-gray-800 pb-6 mb-6"></div>
+            <div>
+                <h4 class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-3">Sources & Données :</h4>
+                <div id="modal-sources" class="text-xs text-gray-400 space-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="border-t border-gray-800 bg-[#090a0d] py-8 text-center text-xs text-gray-600 tracking-wider">
+        &copy; 2026 Milestone Investment Management. Tous droits réservés.
+    </footer>
+
+    <script>
+        let articlesData = [];
+
+        async function fetchArticles() {
+            try {
+                const response = await fetch('/api/articles');
+                articlesData = await response.json();
+                renderArticles(articlesData);
+            } catch (error) {
+                document.getElementById('articles-grid').innerHTML = `
+                    <p class="text-red-400 col-span-full py-4 text-center text-sm tracking-wide">
+                        Erreur de connexion avec le serveur de base de données.
+                    </p>`;
+            }
+        }
+
+        function renderArticles(articles) {
+            const grid = document.getElementById('articles-grid');
+            if (articles.length === 0) {
+                grid.innerHTML = `
+                    <p class="text-gray-500 col-span-full py-12 text-center text-sm italic">
+                        Aucun article n'a encore été généré pour le moment.
+                    </p>`;
+                return;
+            }
+
+            grid.innerHTML = articles.map((article, index) => `
+                <div class="bg-[#14171c] border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-600 transition duration-300 group">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${article.region}</span>
+                            <span class="text-xs text-gray-500">${article.date}</span>
+                        </div>
+                        <h3 class="text-lg font-light tracking-tight text-white group-hover:text-gray-300 transition line-clamp-2 mb-3">
+                            ${article.title}
+                        </h3>
+                        <p class="text-gray-400 text-xs line-clamp-3 mb-6 leading-relaxed">
+                            ${article.content.replace(/[#*`]/g, '').substring(0, 140)}...
+                        </p>
+                    </div>
+                    <button onclick="openModal('${index}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition">
+                        Lire l'Analyse &rarr;
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openModal(index) {
+            const article = articlesData[index];
+            document.getElementById('modal-title').innerText = article.title;
+            document.getElementById('modal-region').innerText = article.region;
+            document.getElementById('modal-date').innerText = article.date;
+            
+            // Basic custom renderer for rendering paragraph markdowns cleanly
+            document.getElementById('modal-content').innerHTML = article.content
+                .split('\n\n')
+                .map(p => `<p class="mb-4">${p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`)
+                .join('');
+
+            document.getElementById('modal-sources').innerHTML = article.sources
+                ? article.sources.split('\n').map(s => `<p class="py-0.5">${s}</p>`).join('')
+                : 'Données internes de marché.';
+                
+            document.getElementById('article-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('article-modal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Initialize execution setup
+        fetchArticles();
+    </script>
+</body>
+</html>
