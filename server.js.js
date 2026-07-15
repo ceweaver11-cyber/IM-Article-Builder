@@ -110,13 +110,22 @@ app.get('/api/articles', (req, res) => {
 });
 
 // Manual trigger route for initial populating/testing (Allows external cron-jobs)
-app.post('/api/trigger-generation', async (req, res) => {
+app.post('/api/trigger-generation', (req, res) => {
     const cronSecret = req.headers['x-cron-secret'];
     
     // Simple pass-phrase check to prevent unauthorized spamming of your Claude key
     if (cronSecret !== "MilestoneIM2026SecurePass") {
         return res.status(401).json({ error: "Unauthorized: Missing or invalid security token header." });
     }
+
+    // Instantly respond to cron-job.org so it doesn't time out (takes < 0.1 seconds)
+    res.json({ message: "Generation protocol initiated successfully in the background." });
+
+    // Let the server write the articles in the background
+    generateDailyArticles().catch(err => {
+        console.error("[Background Error] Daily article generation failed:", err);
+    });
+});
 
     await generateDailyArticles();
     res.json({ message: "Generation protocol sequence triggered manually." });
