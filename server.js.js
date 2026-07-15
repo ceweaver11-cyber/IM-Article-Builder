@@ -109,8 +109,15 @@ app.get('/api/articles', (req, res) => {
     }
 });
 
-// Manual trigger route for initial populating/testing
+// Manual trigger route for initial populating/testing (Allows external cron-jobs)
 app.post('/api/trigger-generation', async (req, res) => {
+    const cronSecret = req.headers['x-cron-secret'];
+    
+    // Simple pass-phrase check to prevent unauthorized spamming of your Claude key
+    if (cronSecret !== "MilestoneIM2026SecurePass") {
+        return res.status(401).json({ error: "Unauthorized: Missing or invalid security token header." });
+    }
+
     await generateDailyArticles();
     res.json({ message: "Generation protocol sequence triggered manually." });
 });
