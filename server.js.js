@@ -108,7 +108,6 @@ app.get('/api/articles', (req, res) => {
         res.status(500).json({ error: "Failed to read database articles record." });
     }
 });
-
 // Manual trigger route for initial populating/testing (Allows external cron-jobs)
 app.post('/api/trigger-generation', (req, res) => {
     const cronSecret = req.headers['x-cron-secret'];
@@ -125,10 +124,6 @@ app.post('/api/trigger-generation', (req, res) => {
     generateDailyArticles().catch(err => {
         console.error("[Background Error] Daily article generation failed:", err);
     });
-});
-
-    await generateDailyArticles();
-    res.json({ message: "Generation protocol sequence triggered manually." });
 });
 
 app.listen(PORT, () => {
