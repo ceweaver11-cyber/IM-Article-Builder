@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exploration — Milestone IM</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Marcellus and Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
     <style>
+        /* Body copy set to Open Sans */
         body {
             background-color: #0d0f12;
             color: #f3f4f6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Open Sans', sans-serif;
+        }
+        
+        /* Headers, Logo, and Navbar set to Marcellus */
+        h1, h2, h3, h4, h5, h6, 
+        header a, header span, 
+        .font-serif-custom {
+            font-family: 'Marcellus', serif !important;
         }
     </style>
 </head>
@@ -22,10 +36,11 @@
             </a>
             
             <div class="flex items-center space-x-8 text-xs tracking-widest uppercase font-medium text-gray-400">
-                <span class="text-white border-b border-white pb-1">Exploration & Blog</span>
-                <a href="https://milestone-im.com" class="hover:text-white transition">Notre Métier</a>
-                <a href="https://milestone-im.com" class="hover:text-white transition">Track Record</a>
-                <a href="https://milestone-im.com" class="border border-gray-700 px-4 py-2 hover:bg-white hover:text-black transition">FR / EN</a>
+                <!-- Changed to "Exploration" only -->
+                <span class="text-white border-b border-white pb-1 font-serif-custom">Exploration</span>
+                <a href="https://milestone-im.com" class="hover:text-white transition font-serif-custom">Notre Métier</a>
+                <a href="https://milestone-im.com" class="hover:text-white transition font-serif-custom">Track Record</a>
+                <a href="https://milestone-im.com" class="border border-gray-700 px-4 py-2 hover:bg-white hover:text-black transition font-serif-custom">FR / EN</a>
             </div>
         </div>
     </header>
@@ -101,14 +116,14 @@
                             <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${article.region}</span>
                             <span class="text-xs text-gray-500">${article.date}</span>
                         </div>
-                        <h3 class="text-lg font-light tracking-tight text-white group-hover:text-gray-300 transition line-clamp-2 mb-3">
+                        <h3 class="text-lg font-light tracking-tight text-white group-hover:text-gray-300 transition line-clamp-2 mb-3" style="font-family: 'Marcellus', serif;">
                             ${article.title}
                         </h3>
                         <p class="text-gray-400 text-xs line-clamp-3 mb-6 leading-relaxed">
                             ${article.content.replace(/[#*`]/g, '').substring(0, 140)}...
                         </p>
                     </div>
-                    <button onclick="openModal('${index}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition">
+                    <button onclick="openModal('${index}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition font-serif-custom">
                         Lire l'Analyse &rarr;
                     </button>
                 </div>
