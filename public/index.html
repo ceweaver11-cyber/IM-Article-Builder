@@ -52,7 +52,7 @@
                 Sélectionner. Structurer. <span class="font-normal text-gray-400">Livrer.</span>
             </h1>
             <p id="hero-desc" class="text-gray-400 max-w-2xl text-sm leading-relaxed">
-                Daily macroeconomic insights, off-market opportunities, and real return analyses across the Swiss and Eastern French corridors.
+                Retrouvez nos analyses macroéconomiques quotidiennes, nos analyses d'opportunités off-market et nos décryptages de rendements réels sur les corridors Suisse et France Orientale.
             </p>
         </div>
 
@@ -129,6 +129,7 @@
                 const data = await res.json();
                 return data.responseData.translatedText || text;
             } catch (err) {
+                console.error("Translation API error:", err);
                 return text; // Fallback if API fails
             }
         }
@@ -147,16 +148,22 @@
         function applyStaticTranslations() {
             const t = translations[currentLang];
             document.title = t.title;
-            document.getElementById('nav-exploration').innerText = t.navExploration;
-            document.getElementById('nav-business').innerText = t.navBusiness;
-            document.getElementById('nav-track').innerText = t.navTrack;
-            document.getElementById('hero-tagline').innerText = t.heroTagline;
-            document.getElementById('hero-title').innerHTML = t.heroTitle;
-            document.getElementById('hero-desc').innerText = t.heroDesc;
-            document.getElementById('modal-close-btn').innerHTML = t.modalClose;
-            document.getElementById('modal-sources-title').innerText = t.modalSources;
-            document.getElementById('footer-text').innerHTML = t.footer;
-            document.getElementById('lang-btn').innerText = currentLang === 'fr' ? "FR / EN" : "EN / FR";
+            
+            // Safe checks to avoid innerText breaks
+            if(document.getElementById('nav-exploration')) document.getElementById('nav-exploration').innerText = t.navExploration;
+            if(document.getElementById('nav-business')) document.getElementById('nav-business').innerText = t.navBusiness;
+            if(document.getElementById('nav-track')) document.getElementById('nav-track').innerText = t.navTrack;
+            if(document.getElementById('hero-tagline')) document.getElementById('hero-tagline').innerText = t.heroTagline;
+            if(document.getElementById('hero-title')) document.getElementById('hero-title').innerHTML = t.heroTitle;
+            if(document.getElementById('hero-desc')) document.getElementById('hero-desc').innerText = t.heroDesc;
+            if(document.getElementById('modal-close-btn')) document.getElementById('modal-close-btn').innerHTML = t.modalClose;
+            if(document.getElementById('modal-sources-title')) document.getElementById('modal-sources-title').innerText = t.modalSources;
+            if(document.getElementById('footer-text')) document.getElementById('footer-text').innerHTML = t.footer;
+            
+            // Toggle the button visual cue
+            if(document.getElementById('lang-btn')) {
+                document.getElementById('lang-btn').innerText = currentLang === 'fr' ? "FR / EN" : "EN / FR";
+            }
         }
 
         async function fetchArticles() {
@@ -178,10 +185,17 @@
             const grid = document.getElementById('articles-grid');
             const t = translations[currentLang];
 
-            if (articles.length === 0) {
+            if (!articles || articles.length === 0) {
                 grid.innerHTML = `<p class="text-gray-500 col-span-full py-12 text-center text-sm italic">${t.emptyArticles}</p>`;
                 return;
             }
+
+            // Put grid into temporary loading state while translations process
+            grid.innerHTML = `
+                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+            `;
 
             // Generate HTML structure
             let htmlContent = '';
