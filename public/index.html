@@ -6,19 +6,17 @@
     <title>Exploration — Milestone IM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Google Fonts: Marcellus and Open Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 
     <style>
-        /* Body copy set to Open Sans */
         body {
             background-color: #0d0f12;
             color: #f3f4f6;
             font-family: 'Open Sans', sans-serif;
         }
-        
-        /* Headers, Logo, and Navbar set to Marcellus */
         h1, h2, h3, h4, h5, h6, 
         header a, header span, button,
         .font-serif-custom {
@@ -30,6 +28,7 @@
 
     <header class="border-b border-gray-800 bg-[#0d0f12] sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <!-- Cleaned Logo displaying Milestone in Marcellus -->
             <a href="https://milestone-im.com" class="text-2xl text-white hover:opacity-80 transition font-serif-custom tracking-wide" style="font-family: 'Marcellus', serif; text-transform: none;">
                 Milestone
             </a>
@@ -38,8 +37,9 @@
                 <span id="nav-exploration" class="text-white border-b border-white pb-1 font-serif-custom">Exploration</span>
                 <a href="https://milestone-im.com" id="nav-business" class="hover:text-white transition font-serif-custom">Notre Métier</a>
                 <a href="https://milestone-im.com" id="nav-track" class="hover:text-white transition font-serif-custom">Track Record</a>
+                <!-- Toggle Button -->
                 <button onclick="toggleLanguage()" id="lang-btn" class="border border-gray-700 px-4 py-2 hover:bg-white hover:text-black transition font-serif-custom text-xs uppercase tracking-widest">
-                    EN / FR
+                    FR / EN
                 </button>
             </div>
         </div>
@@ -84,11 +84,10 @@
     </footer>
 
     <script>
-        // Default App Language state
         let currentLang = 'fr'; 
         let articlesData = [];
 
-        // Static Page Translations
+        // Static Text Dictionary
         const translations = {
             fr: {
                 title: "Exploration — Milestone IM",
@@ -122,15 +121,29 @@
             }
         };
 
-        // Switch application language
-        function toggleLanguage() {
-            currentLang = currentLang === 'fr' ? 'en' : 'fr';
-            document.documentElement.lang = currentLang;
-            applyStaticTranslations();
-            renderArticles(articlesData);
+        // Simple translation utility for the dynamic articles
+        async function translateText(text, targetLang) {
+            if (targetLang === 'fr') return text; // Base language is already French
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fr|en`);
+                const data = await res.json();
+                return data.responseData.translatedText || text;
+            } catch (err) {
+                return text; // Fallback if API fails
+            }
         }
 
-        // Write translations to DOM elements
+        async function toggleLanguage() {
+            currentLang = currentLang === 'fr' ? 'en' : 'fr';
+            document.documentElement.lang = currentLang;
+            
+            // Update static content immediately
+            applyStaticTranslations();
+            
+            // Update articles with live translation layout
+            await renderArticles(articlesData);
+        }
+
         function applyStaticTranslations() {
             const t = translations[currentLang];
             document.title = t.title;
@@ -143,8 +156,6 @@
             document.getElementById('modal-close-btn').innerHTML = t.modalClose;
             document.getElementById('modal-sources-title').innerText = t.modalSources;
             document.getElementById('footer-text').innerHTML = t.footer;
-            
-            // Highlight the target language option on the button
             document.getElementById('lang-btn').innerText = currentLang === 'fr' ? "FR / EN" : "EN / FR";
         }
 
@@ -152,8 +163,8 @@
             try {
                 const response = await fetch('/api/articles');
                 articlesData = await response.json();
-                applyStaticTranslations(); // Load initial layout
-                renderArticles(articlesData);
+                applyStaticTranslations();
+                await renderArticles(articlesData);
             } catch (error) {
                 const t = translations[currentLang];
                 document.getElementById('articles-grid').innerHTML = `
@@ -163,57 +174,67 @@
             }
         }
 
-        function renderArticles(articles) {
+        async function renderArticles(articles) {
             const grid = document.getElementById('articles-grid');
             const t = translations[currentLang];
 
-            // Filter articles that have matching language field
-            const filteredArticles = articles.filter(art => {
-                const artLang = art.language ? art.language.toLowerCase() : 'fr';
-                return artLang === currentLang;
-            });
-
-            if (filteredArticles.length === 0) {
-                grid.innerHTML = `
-                    <p class="text-gray-500 col-span-full py-12 text-center text-sm italic">
-                        ${t.emptyArticles}
-                    </p>`;
+            if (articles.length === 0) {
+                grid.innerHTML = `<p class="text-gray-500 col-span-full py-12 text-center text-sm italic">${t.emptyArticles}</p>`;
                 return;
             }
 
-            grid.innerHTML = filteredArticles.map((article) => {
-                // Find global index of this article to reference in modal opening
-                const globalIndex = articles.indexOf(article);
+            // Generate HTML structure
+            let htmlContent = '';
+            for (let i = 0; i < articles.length; i++) {
+                const article = articles[i];
                 
-                return `
+                // Live client-side translation of text targets
+                const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
+                const displaySnippet = currentLang === 'en' ? await translateText(article.content.substring(0, 140), 'en') : article.content.substring(0, 140);
+                const displayRegion = currentLang === 'en' ? (article.region.includes('France') ? 'Eastern France' : 'Switzerland') : article.region;
+
+                htmlContent += `
                     <div class="bg-[#14171c] border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-600 transition duration-300 group">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${article.region}</span>
+                                <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${displayRegion}</span>
                                 <span class="text-xs text-gray-500">${article.date}</span>
                             </div>
                             <h3 class="text-lg font-light tracking-tight text-white group-hover:text-gray-300 transition line-clamp-2 mb-3" style="font-family: 'Marcellus', serif;">
-                                ${article.title}
+                                ${displayTitle}
                             </h3>
                             <p class="text-gray-400 text-xs line-clamp-3 mb-6 leading-relaxed">
-                                ${article.content.replace(/[#*`]/g, '').substring(0, 140)}...
+                                ${displaySnippet.replace(/[#*`]/g, '')}...
                             </p>
                         </div>
-                        <button onclick="openModal('${globalIndex}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition font-serif-custom">
+                        <button onclick="openModal('${i}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition font-serif-custom">
                             ${t.readMore}
                         </button>
                     </div>
                 `;
-            }).join('');
+            }
+            grid.innerHTML = htmlContent;
         }
 
-        function openModal(index) {
+        async function openModal(index) {
             const article = articlesData[index];
-            document.getElementById('modal-title').innerText = article.title;
-            document.getElementById('modal-region').innerText = article.region;
+            const t = translations[currentLang];
+            
+            // Set temporary loading indicator while translation fetches
+            document.getElementById('modal-title').innerText = currentLang === 'en' ? "Translating..." : article.title;
+            document.getElementById('modal-content').innerText = currentLang === 'en' ? "Translating analysis text..." : "";
+            document.getElementById('article-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
+            const displayContent = currentLang === 'en' ? await translateText(article.content, 'en') : article.content;
+            const displayRegion = currentLang === 'en' ? (article.region.includes('France') ? 'Eastern France' : 'Switzerland') : article.region;
+
+            document.getElementById('modal-title').innerText = displayTitle;
+            document.getElementById('modal-region').innerText = displayRegion;
             document.getElementById('modal-date').innerText = article.date;
             
-            document.getElementById('modal-content').innerHTML = article.content
+            document.getElementById('modal-content').innerHTML = displayContent
                 .split('\n\n')
                 .map(p => `<p class="mb-4">${p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`)
                 .join('');
@@ -221,9 +242,6 @@
             document.getElementById('modal-sources').innerHTML = article.sources
                 ? article.sources.split('\n').map(s => `<p class="py-0.5">${s}</p>`).join('')
                 : (currentLang === 'fr' ? 'Données internes de marché.' : 'Internal market data.');
-                
-            document.getElementById('article-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
         }
 
         function closeModal() {
