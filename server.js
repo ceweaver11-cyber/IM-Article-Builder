@@ -95,9 +95,6 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
 }
 
 // Automation Scheduler: Runs daily at 11:59 PM (23:59)
-cron.schedule('59 23 * * *', () => {
-    generateDailyArticles();
-});
 
 // API endpoint for Frontend UI
 app.get('/api/articles', (req, res) => {
