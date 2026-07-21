@@ -107,7 +107,8 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
             messages: [{ role: 'user', content: prompt }]
         });
 
-        const rawContent = response.content[0].text.trim();
+        const textBlock = response.content?.find(block => block.type === 'text') || response.content?.[0];
+        const rawContent = (textBlock?.text || '').trim();
         const cleanedJSONString = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
         const newArticles = JSON.parse(cleanedJSONString);
 
