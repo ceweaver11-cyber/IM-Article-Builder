@@ -101,7 +101,7 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
 
     try {
         const response = await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-latest',
+            model: 'claude-sonnet-5',
             max_tokens: 4000,
             temperature: 0.7,
             system: "You are an expert real estate data parser and elite copywriter. You only output raw, properly structured JSON arrays without any markdown wrapping blocks, code snippets wrappers, or introductory text.",
