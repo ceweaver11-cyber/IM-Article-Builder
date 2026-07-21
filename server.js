@@ -89,7 +89,7 @@ Your writing tone is inspired by "Les Secrets de l'Immo" but modernized: it must
 7. LANGUAGE: Impeccable, highly natural French.
 
 ### OUTPUT FORMAT REQUIREMENT:
-Generate exactly 10 independent articles. Return your complete output valid ONLY as a raw, valid JSON array of objects. Do not include phase markdown tags or conversational prose outside the JSON. Follow this exact JSON template schema layout:
+Generate exactly 5 independent articles. Return your complete output valid ONLY as a raw, valid JSON array of objects. Do not include phase markdown tags or conversational prose outside the JSON. Follow this exact JSON template schema layout:
 [
   {
     "title": "Title of Article 1",
@@ -130,7 +130,7 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
 
             // Commit back to GitHub permanently
             await saveArticlesToGitHub(updatedData, sha);
-            console.log('[Success] 10 new articles written to GitHub articles.json safely.');
+            console.log('[Success] 5 new articles written to GitHub articles.json safely.');
         }
     } catch (error) {
         console.error('[Error Run-Time Pipeline Failure]:', error);
