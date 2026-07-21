@@ -1,28 +1,72 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const cors = require('cors');
-const cron = require('node-cron');
 const { Anthropic } = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'articles.json');
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-// Ensure local JSON storage exists
-if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify([], null, 2));
-}
-
-// Instantiate Anthropic Client
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// GitHub repository details
+const GITHUB_REPO = 'ceweaver11-cyber/IM-Article-Builder';
+const FILE_PATH = 'articles.json';
+
+/**
+ * Helper function: Fetch articles directly from GitHub
+ */
+async function getArticlesFromGitHub() {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${FILE_PATH}`;
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+        }
+    });
+
+    if (!response.ok) {
+        if (response.status === 404) return { sha: null, content: [] };
+        throw new Error(`GitHub fetch error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = Buffer.from(data.content, 'base64').toString('utf-8');
+    return { sha: data.sha, content: JSON.parse(content) };
+}
+
+/**
+ * Helper function: Save updated articles directly to GitHub
+ */
+async function saveArticlesToGitHub(updatedArticles, sha) {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${FILE_PATH}`;
+    const contentEncoded = Buffer.from(JSON.stringify(updatedArticles, null, 2)).toString('base64');
+
+    const body = {
+        message: 'automation: publish daily generated articles',
+        content: contentEncoded,
+        ...(sha && { sha }) // Include SHA if updating an existing file
+    };
+
+    const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        throw new Error(`GitHub save error: ${response.statusText}`);
+    }
+}
 
 /**
  * Dual-Agent AI Writer Execution Engine
@@ -52,8 +96,7 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
     "region": "Switzerland OR Eastern France",
     "content": "Full markdown formatted body of the short article in natural, punchy French here...",
     "sources": "Clear list or lines of markdown text attributing sources used"
-  },
-  ...
+  }
 ]`;
 
     try {
@@ -66,15 +109,13 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
         });
 
         const rawContent = response.content[0].text.trim();
-        // Sanitize out potentially wrapped markdown code barriers if Claude adds them
         const cleanedJSONString = rawContent.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-        
         const newArticles = JSON.parse(cleanedJSONString);
 
         if (Array.isArray(newArticles)) {
-            const currentData = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+            // Fetch current articles from GitHub
+            const { sha, content: currentData } = await getArticlesFromGitHub();
             
-            // Format each generated item with the current timestamp
             const formattedArticles = newArticles.map(art => ({
                 id: Date.now() + Math.random().toString(36).substr(2, 5),
                 title: art.title,
@@ -84,40 +125,38 @@ Generate exactly 10 independent articles. Return your complete output valid ONLY
                 sources: art.sources
             }));
 
-            // Append onto database
+            // Combine new and old articles
             const updatedData = [...formattedArticles, ...currentData];
-            fs.writeFileSync(DB_FILE, JSON.stringify(updatedData, null, 2));
-            console.log(`[Success] 10 new articles written to articles.json safely.`);
+
+            // Commit back to GitHub permanently
+            await saveArticlesToGitHub(updatedData, sha);
+            console.log('[Success] 10 new articles written to GitHub articles.json safely.');
         }
     } catch (error) {
         console.error('[Error Run-Time Pipeline Failure]:', error);
     }
 }
 
-// Automation Scheduler: Runs daily at 11:59 PM (23:59)
-
-// API endpoint for Frontend UI
-app.get('/api/articles', (req, res) => {
+// GET endpoint for frontend UI
+app.get('/api/articles', async (req, res) => {
     try {
-        const data = fs.readFileSync(DB_FILE, 'utf8');
-        res.json(JSON.parse(data));
+        const { content } = await getArticlesFromGitHub();
+        res.json(content);
     } catch (err) {
-        res.status(500).json({ error: "Failed to read database articles record." });
+        res.status(500).json({ error: "Failed to fetch database record from GitHub." });
     }
 });
-// Manual trigger route for initial populating/testing (Allows external cron-jobs)
+
+// Manual trigger route for external cron-job
 app.post('/api/trigger-generation', (req, res) => {
     const cronSecret = req.headers['x-cron-secret'];
     
-    // Simple pass-phrase check to prevent unauthorized spamming of your Claude key
     if (cronSecret !== "MilestoneIM2026SecurePass") {
         return res.status(401).json({ error: "Unauthorized: Missing or invalid security token header." });
     }
 
-    // Instantly respond to cron-job.org so it doesn't time out (takes < 0.1 seconds)
     res.json({ message: "Generation protocol initiated successfully in the background." });
 
-    // Let the server write the articles in the background
     generateDailyArticles().catch(err => {
         console.error("[Background Error] Daily article generation failed:", err);
     });
