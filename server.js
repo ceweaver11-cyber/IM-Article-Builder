@@ -135,7 +135,7 @@ Generate exactly 2 long-form articles matching the locations above. Return your 
 
     try {
         const response = await anthropic.messages.create({
-            model: 'claude-3-5-haiku-20241022',
+            model: 'claude-3-5-sonnet-20241022',
             max_tokens: 8192,
             system: "You are an expert real estate data parser and copywriter. You only output valid raw JSON arrays without markdown block syntax, triple backticks, or intro text.",
             messages: [{ role: 'user', content: prompt }]
