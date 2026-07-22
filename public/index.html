@@ -83,9 +83,10 @@
         &copy; 2026 Milestone Investment Management. Tous droits réservés.
     </footer>
 
-    <script>
+   <script>
         let currentLang = 'fr'; 
         let articlesData = [];
+        const translationCache = new Map(); // Translation memory for instant switching
 
         // Static Text Dictionary
         const translations = {
@@ -121,16 +122,44 @@
             }
         };
 
-        // Simple translation utility for the dynamic articles
+        /**
+         * Dynamic Date Formatter (Translates dates into FR/EN based on chosen language)
+         */
+        function formatDate(dateStr, lang) {
+            if (!dateStr) return '';
+            const dateObj = new Date(dateStr);
+            if (isNaN(dateObj)) return dateStr; // Return original string if not ISO standard
+
+            const locale = (lang === 'en') ? 'en-US' : 'fr-FR';
+            return new Intl.DateTimeFormat(locale, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(dateObj);
+        }
+
+        /**
+         * Fast translation fetcher using cache
+         */
         async function translateText(text, targetLang) {
-            if (targetLang === 'fr') return text; // Base language is already French
+            if (targetLang === 'fr' || !text) return text;
+            
+            // Check cache memory first
+            if (translationCache.has(text)) {
+                return translationCache.get(text);
+            }
+
             try {
                 const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fr|en`);
                 const data = await res.json();
-                return data.responseData.translatedText || text;
+                const translated = data.responseData.translatedText || text;
+                
+                // Store in cache for instant re-use
+                translationCache.set(text, translated);
+                return translated;
             } catch (err) {
                 console.error("Translation API error:", err);
-                return text; // Fallback if API fails
+                return text;
             }
         }
 
@@ -138,10 +167,10 @@
             currentLang = currentLang === 'fr' ? 'en' : 'fr';
             document.documentElement.lang = currentLang;
             
-            // Update static content immediately
+            // Update UI static headers immediately
             applyStaticTranslations();
             
-            // Update articles with live translation layout
+            // Re-render articles (uses instant cache if previously translated)
             await renderArticles(articlesData);
         }
 
@@ -149,7 +178,6 @@
             const t = translations[currentLang];
             document.title = t.title;
             
-            // Safe checks to avoid innerText breaks
             if(document.getElementById('nav-exploration')) document.getElementById('nav-exploration').innerText = t.navExploration;
             if(document.getElementById('nav-business')) document.getElementById('nav-business').innerText = t.navBusiness;
             if(document.getElementById('nav-track')) document.getElementById('nav-track').innerText = t.navTrack;
@@ -160,7 +188,6 @@
             if(document.getElementById('modal-sources-title')) document.getElementById('modal-sources-title').innerText = t.modalSources;
             if(document.getElementById('footer-text')) document.getElementById('footer-text').innerHTML = t.footer;
             
-            // Toggle the button visual cue
             if(document.getElementById('lang-btn')) {
                 document.getElementById('lang-btn').innerText = currentLang === 'fr' ? "FR / EN" : "EN / FR";
             }
@@ -190,35 +217,39 @@
                 return;
             }
 
-            // Put grid into temporary loading state while translations process
-            grid.innerHTML = `
-                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
-                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
-                <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
-            `;
+            // Show skeleton loaders if translates take time on first run
+            if (currentLang === 'en' && articles.some(art => !translationCache.has(art.title))) {
+                grid.innerHTML = `
+                    <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+                    <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+                    <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
+                `;
+            }
 
-            // Generate HTML structure
-            let htmlContent = '';
-            for (let i = 0; i < articles.length; i++) {
-                const article = articles[i];
-                
-                // Live client-side translation of text targets
+            // Run translations concurrently across all cards
+            const processedArticles = await Promise.all(articles.map(async (article) => {
                 const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
                 const displaySnippet = currentLang === 'en' ? await translateText(article.content.substring(0, 140), 'en') : article.content.substring(0, 140);
-                const displayRegion = currentLang === 'en' ? (article.region.includes('France') ? 'Eastern France' : 'Switzerland') : article.region;
+                const displayRegion = currentLang === 'en' ? await translateText(article.region, 'en') : article.region;
+                const formattedDate = formatDate(article.isoDate || article.date, currentLang);
 
+                return { ...article, displayTitle, displaySnippet, displayRegion, formattedDate };
+            }));
+
+            let htmlContent = '';
+            processedArticles.forEach((article, i) => {
                 htmlContent += `
                     <div class="bg-[#14171c] border border-gray-800 p-6 flex flex-col justify-between hover:border-gray-600 transition duration-300 group">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${displayRegion}</span>
-                                <span class="text-xs text-gray-500">${article.date}</span>
+                                <span class="text-[10px] font-mono tracking-widest uppercase bg-gray-800 text-gray-300 px-2 py-0.5">${article.displayRegion}</span>
+                                <span class="text-xs text-gray-500">${article.formattedDate}</span>
                             </div>
                             <h3 class="text-lg font-light tracking-tight text-white group-hover:text-gray-300 transition line-clamp-2 mb-3" style="font-family: 'Marcellus', serif;">
-                                ${displayTitle}
+                                ${article.displayTitle}
                             </h3>
                             <p class="text-gray-400 text-xs line-clamp-3 mb-6 leading-relaxed">
-                                ${displaySnippet.replace(/[#*`]/g, '')}...
+                                ${article.displaySnippet.replace(/[#*`]/g, '')}...
                             </p>
                         </div>
                         <button onclick="openModal('${i}')" class="text-xs tracking-widest uppercase font-semibold text-white border-b border-white self-start pb-1 hover:text-gray-400 hover:border-gray-400 transition font-serif-custom">
@@ -226,7 +257,8 @@
                         </button>
                     </div>
                 `;
-            }
+            });
+
             grid.innerHTML = htmlContent;
         }
 
@@ -234,7 +266,6 @@
             const article = articlesData[index];
             const t = translations[currentLang];
             
-            // Set temporary loading indicator while translation fetches
             document.getElementById('modal-title').innerText = currentLang === 'en' ? "Translating..." : article.title;
             document.getElementById('modal-content').innerText = currentLang === 'en' ? "Translating analysis text..." : "";
             document.getElementById('article-modal').classList.remove('hidden');
@@ -242,11 +273,12 @@
 
             const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
             const displayContent = currentLang === 'en' ? await translateText(article.content, 'en') : article.content;
-            const displayRegion = currentLang === 'en' ? (article.region.includes('France') ? 'Eastern France' : 'Switzerland') : article.region;
+            const displayRegion = currentLang === 'en' ? await translateText(article.region, 'en') : article.region;
+            const formattedDate = formatDate(article.isoDate || article.date, currentLang);
 
             document.getElementById('modal-title').innerText = displayTitle;
             document.getElementById('modal-region').innerText = displayRegion;
-            document.getElementById('modal-date').innerText = article.date;
+            document.getElementById('modal-date').innerText = formattedDate;
             
             document.getElementById('modal-content').innerHTML = displayContent
                 .split('\n\n')
