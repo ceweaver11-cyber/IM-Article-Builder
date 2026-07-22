@@ -83,10 +83,10 @@
         &copy; 2026 Milestone Investment Management. Tous droits réservés.
     </footer>
 
-   <script>
+ <script>
         let currentLang = 'fr'; 
         let articlesData = [];
-        const translationCache = new Map(); // Translation memory for instant switching
+        const translationCache = new Map(); // Fast translation memory
 
         // Static Text Dictionary
         const translations = {
@@ -122,29 +122,72 @@
             }
         };
 
-        /**
-         * Dynamic Date Formatter (Translates dates into FR/EN based on chosen language)
-         */
-        function formatDate(dateStr, lang) {
-            if (!dateStr) return '';
-            const dateObj = new Date(dateStr);
-            if (isNaN(dateObj)) return dateStr; // Return original string if not ISO standard
+        // Month mapping to translate French text dates to English
+        const frToEnMonths = {
+            'janvier': 'January', 'février': 'February', 'mars': 'March',
+            'avril': 'April', 'mai': 'May', 'juin': 'June',
+            'juillet': 'July', 'août': 'August', 'septembre': 'September',
+            'octobre': 'October', 'novembre': 'November', 'décembre': 'December'
+        };
 
-            const locale = (lang === 'en') ? 'en-US' : 'fr-FR';
-            return new Intl.DateTimeFormat(locale, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }).format(dateObj);
+        const enToFrMonths = {
+            'January': 'janvier', 'February': 'février', 'March': 'mars',
+            'April': 'avril', 'May': 'mai', 'June': 'juin',
+            'July': 'juillet', 'August': 'août', 'September': 'septembre',
+            'October': 'octobre', 'November': 'novembre', 'December': 'décembre'
+        };
+
+        /**
+         * Robust Date Formatter: Handles ISO formats AND existing French text dates
+         */
+        function formatDate(dateStr, isoDateStr, lang) {
+            // 1. If we have a valid ISO date (YYYY-MM-DD), use standard Intl formatter
+            const sourceDate = isoDateStr || dateStr;
+            const parsedDate = new Date(sourceDate);
+
+            if (!isNaN(parsedDate.getTime()) && sourceDate.includes('-')) {
+                const locale = (lang === 'en') ? 'en-US' : 'fr-FR';
+                return new Intl.DateTimeFormat(locale, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }).format(parsedDate);
+            }
+
+            // 2. If it's a legacy French text date like "21 juillet 2026"
+            if (typeof dateStr === 'string') {
+                let formatted = dateStr.trim();
+                if (lang === 'en') {
+                    // Convert "21 juillet 2026" -> "July 21, 2026"
+                    for (const [frMonth, enMonth] of Object.entries(frToEnMonths)) {
+                        if (formatted.toLowerCase().includes(frMonth)) {
+                            const parts = formatted.split(/\s+/); // ['21', 'juillet', '2026']
+                            if (parts.length === 3) {
+                                return `${enMonth} ${parts[0]}, ${parts[2]}`;
+                            }
+                            return formatted.replace(new RegExp(frMonth, 'gi'), enMonth);
+                        }
+                    }
+                } else {
+                    // Revert back to French format if previously converted
+                    for (const [enMonth, frMonth] of Object.entries(enToFrMonths)) {
+                        if (formatted.includes(enMonth)) {
+                            return formatted.replace(enMonth, frMonth);
+                        }
+                    }
+                }
+                return formatted;
+            }
+
+            return dateStr || '';
         }
 
         /**
-         * Fast translation fetcher using cache
+         * Fast translation fetcher using cache memory
          */
         async function translateText(text, targetLang) {
             if (targetLang === 'fr' || !text) return text;
             
-            // Check cache memory first
             if (translationCache.has(text)) {
                 return translationCache.get(text);
             }
@@ -154,7 +197,6 @@
                 const data = await res.json();
                 const translated = data.responseData.translatedText || text;
                 
-                // Store in cache for instant re-use
                 translationCache.set(text, translated);
                 return translated;
             } catch (err) {
@@ -167,10 +209,7 @@
             currentLang = currentLang === 'fr' ? 'en' : 'fr';
             document.documentElement.lang = currentLang;
             
-            // Update UI static headers immediately
             applyStaticTranslations();
-            
-            // Re-render articles (uses instant cache if previously translated)
             await renderArticles(articlesData);
         }
 
@@ -217,7 +256,7 @@
                 return;
             }
 
-            // Show skeleton loaders if translates take time on first run
+            // Show skeletons briefly when fetching EN translation for first time
             if (currentLang === 'en' && articles.some(art => !translationCache.has(art.title))) {
                 grid.innerHTML = `
                     <div class="animate-pulse bg-[#14171c] p-6 h-64 border border-gray-800"></div>
@@ -226,12 +265,13 @@
                 `;
             }
 
-            // Run translations concurrently across all cards
             const processedArticles = await Promise.all(articles.map(async (article) => {
                 const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
                 const displaySnippet = currentLang === 'en' ? await translateText(article.content.substring(0, 140), 'en') : article.content.substring(0, 140);
                 const displayRegion = currentLang === 'en' ? await translateText(article.region, 'en') : article.region;
-                const formattedDate = formatDate(article.isoDate || article.date, currentLang);
+                
+                // Converts both legacy French string dates and new ISO dates dynamically
+                const formattedDate = formatDate(article.date, article.isoDate, currentLang);
 
                 return { ...article, displayTitle, displaySnippet, displayRegion, formattedDate };
             }));
@@ -274,7 +314,7 @@
             const displayTitle = currentLang === 'en' ? await translateText(article.title, 'en') : article.title;
             const displayContent = currentLang === 'en' ? await translateText(article.content, 'en') : article.content;
             const displayRegion = currentLang === 'en' ? await translateText(article.region, 'en') : article.region;
-            const formattedDate = formatDate(article.isoDate || article.date, currentLang);
+            const formattedDate = formatDate(article.date, article.isoDate, currentLang);
 
             document.getElementById('modal-title').innerText = displayTitle;
             document.getElementById('modal-region').innerText = displayRegion;
