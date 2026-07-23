@@ -176,6 +176,11 @@ Generate exactly 2 long-form articles matching the locations above. Return your 
     }
 }
 
+// Lightweight health-check endpoint to keep Render awake
+app.get('/ping', (req, res) => {
+    res.status(200).send('Server is awake!');
+});
+
 // GET endpoint for frontend UI
 app.get('/api/articles', async (req, res) => {
     try {
